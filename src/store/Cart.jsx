@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { storeApi, rupees } from "./StoreApi.js";
 import { notifyCartChanged } from "./cartShared.js";
 import { LoginBox } from "./Shop.jsx";
-import "./cart.css";
+import "./Cart.css";
 
 /* ---------- Cart page ---------- */
 export function Cart() {
