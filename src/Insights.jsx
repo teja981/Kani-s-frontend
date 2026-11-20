@@ -9,7 +9,7 @@ import {
     animate,
 } from "framer-motion";
 import { ArrowRight, Quote } from "lucide-react";
-import "./insights.css";
+import "./Insights.css";
 
 /* =====================================================
    CONTENT  (all numbers / quotes below are PLACEHOLDERS.
