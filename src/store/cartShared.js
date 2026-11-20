@@ -1,7 +1,7 @@
 // cartShared.js: tiny helpers shared by the shop pages and the cart panel
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { storeApi } from "./storeApi.js";
+import { storeApi } from "./StoreApi.js";
 
 export const CART_EVENT = "ks-cart-changed";
 export const OPEN_EVENT = "ks-cart-open";

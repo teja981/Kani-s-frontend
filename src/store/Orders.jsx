@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { storeApi, rupees } from "./storeApi.js";
+import { storeApi, rupees } from "./StoreApi.js";
 import { LoginBox } from "./Shop.jsx";
 import "./cart.css";
 

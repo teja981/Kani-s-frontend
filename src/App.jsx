@@ -51,7 +51,7 @@ import CustomerAuth from "./store/CustomerAuth.jsx";
 import { Cart } from "./store/Cart.jsx";
 import { Checkout } from "./store/Checkout.jsx";
 import { MyOrders, OrderPage } from "./store/Orders.jsx";
-import { storeApi } from "./store/storeApi.js";
+import { storeApi } from "./store/StoreApi.js";
 import { CartDock, openCartDrawer } from "./store/CartDrawer.jsx";
 import { useCartCount } from "./store/cartShared.js";
 import { logoutCustomer, useCustomer } from "./store/customerSession.js"; // CHANGED: logout + server-side sign-in check

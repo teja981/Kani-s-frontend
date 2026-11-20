@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { storeApi } from "./storeApi.js";
+import { storeApi } from "./StoreApi.js";
 import { notifyCartChanged } from "./cartShared.js";
 
 const EVENT = "customer-auth-changed";

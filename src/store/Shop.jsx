@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { storeApi, rupees, primaryImage } from "./storeApi.js";
+import { storeApi, rupees, primaryImage } from "./StoreApi.js";
 import { notifyCartChanged, useCartCount } from "./cartShared.js";
 import { openCartDrawer } from "./CartDrawer.jsx";
 export { LoginBox } from "./LoginBox.jsx"; // Cart.jsx imports it from here

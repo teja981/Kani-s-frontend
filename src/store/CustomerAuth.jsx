@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Phone, ShoppingBag, Check, CreditCard, Package, Truck } from "lucide-react";
-import { storeApi } from "./storeApi.js";
+import { storeApi } from "./StoreApi.js";
 import { notifyCartChanged } from "./cartShared.js";
 import { notifyAuthChanged } from "./customerSession.js"; // CHANGED: tells the navbar the user signed in
 import "./CustomerAuth.css";

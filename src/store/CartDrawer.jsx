@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ShoppingBag, X, Minus, Plus, Trash2, ArrowRight } from "lucide-react";
-import { storeApi, rupees } from "./storeApi.js";
+import { storeApi, rupees } from "./StoreApi.js";
 import { notifyCartChanged, useCartCount } from "./cartShared.js";
 import "./CartDrawer.css";
 
