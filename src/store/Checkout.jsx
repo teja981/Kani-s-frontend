@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { storeApi, rupees } from "./StoreApi.js";
 import { notifyCartChanged } from "./cartShared.js";
 import { LoginBox } from "./Shop.jsx";
-import "./cart.css";
+import "./Cart.css";
 import "./checkout-premium.css";
 
 const EMPTY = {
