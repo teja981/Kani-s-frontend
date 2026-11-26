@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Phone, ShoppingBag, Check, CreditCard, Package, Truck } from "lucide-react";
+import { Lock, Eye, EyeOff, ArrowRight, User, ShoppingBag, Check, CreditCard, Package, Truck } from "lucide-react";
 import { storeApi } from "./StoreApi.js";
 import { notifyCartChanged } from "./cartShared.js";
-import { notifyAuthChanged } from "./customerSession.js"; // CHANGED: tells the navbar the user signed in
+import { notifyAuthChanged } from "./customerSession.js"; // tells the navbar the user signed in
 import "./CustomerAuth.css";
 
 /* ---- Backend mounts: app.use("/api/v1/auth/customer", customerAuthRoutes) ----
@@ -11,10 +11,10 @@ import "./CustomerAuth.css";
 const AUTH_BASE = "/auth/customer";
 const LOGIN_PATH = `${AUTH_BASE}/login`;
 const REGISTER_PATH = `${AUTH_BASE}/register`;
-const FORGOT_PATH = `${AUTH_BASE}/forgot-password`;
-const RESET_PATH = `${AUTH_BASE}/reset-password`;   // POST { email, token, newPassword }
-const VERIFY_PATH = `${AUTH_BASE}/verify-email`;    // GET ?token=...&email=...
 /* ------------------------------------------------------------------ */
+
+// same rule the migration used: letters, numbers, "_" and "." (3-30 chars)
+const USERNAME_RE = /^[a-z0-9_.]{3,30}$/;
 
 const LAYERS = [-18, -12, -6, 0, 6, 12, 18];
 const SPARKS = [
@@ -71,54 +71,20 @@ export default function CustomerAuth() {
     const [params] = useSearchParams();
     const rawNext = params.get("next") || "/shop";
     const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/shop";
-    const token = params.get("token") || "";
-    const urlEmail = params.get("email") || ""; // email from the verify / reset links
 
-    const startMode = ["register", "forgot", "reset", "verify"].includes(params.get("mode")) ? params.get("mode") : "login";
-    const [mode, setMode] = useState(startMode);
-    const [form, setForm] = useState({ name: "", phone: "", email: "", password: "", confirm: "", terms: false });
+    const [mode, setMode] = useState(params.get("mode") === "register" ? "register" : "login");
+    const [form, setForm] = useState({ username: "", password: "", confirm: "", terms: false });
     const [show, setShow] = useState(false);
     const [error, setError] = useState("");
     const [busy, setBusy] = useState(false);
     const [welcome, setWelcome] = useState(null);
-    const [notice, setNotice] = useState(null); // { state: "loading" | "ok" | "fail", title, text }
     const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
     const isReg = mode === "register";
-    const isForgot = mode === "forgot";
-    const isReset = mode === "reset";
-    const isVerify = mode === "verify";
-    const hasTabs = mode === "login" || mode === "register";
-    const pwExtras = isReg || isReset;
 
     const score = useMemo(() => strength(form.password), [form.password]);
     const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
-    const switchMode = (m) => { setMode(m); setError(""); setNotice(null); };
-
-    // CHANGED: after reset/verify, drop ?mode=...&token=... from the URL so a refresh
-    // can't reopen the reset form with an already-used token.
-    const goToLogin = () => {
-        setNotice(null);
-        setMode("login");
-        setError("");
-        setForm((f) => ({ ...f, password: "", confirm: "" }));
-        navigate("/account", { replace: true });
-    };
-
-    // email-verification link: /account?mode=verify&token=...&email=...
-    useEffect(() => {
-        if (!isVerify) return;
-        if (!token || !urlEmail) {
-            setNotice({ state: "fail", title: "Link incomplete", text: "This verification link is missing details. Open the link from your email again." });
-            return;
-        }
-        let cancelled = false;
-        setNotice({ state: "loading", title: "Verifying your email…", text: "" });
-        storeApi(`${VERIFY_PATH}?token=${encodeURIComponent(token)}&email=${encodeURIComponent(urlEmail)}`)
-            .then(() => !cancelled && setNotice({ state: "ok", title: "Email verified", text: "Your account is ready. Sign in to start shopping." }))
-            .catch((e) => !cancelled && setNotice({ state: "fail", title: "Couldn't verify", text: e.message || "This link may have expired. Try registering again or request a new link." }));
-        return () => { cancelled = true; };
-    }, [isVerify, token, urlEmail]);
+    const switchMode = (m) => { setMode(m); setError(""); };
 
     const onMove = (e) => {
         if (e.pointerType !== "mouse") return;
@@ -129,55 +95,29 @@ export default function CustomerAuth() {
     const submit = async (e) => {
         e.preventDefault();
         setError("");
-        if (pwExtras) {
+
+        const username = form.username.trim().toLowerCase();
+
+        if (isReg) {
+            if (!USERNAME_RE.test(username)) return setError("Username must be 3-30 characters: letters, numbers, _ or .");
             if (form.password.length < 8) return setError("Use at least 8 characters for your password.");
             if (form.password !== form.confirm) return setError("The two passwords don't match.");
+            if (!form.terms) return setError("Please accept the terms to create your account.");
         }
-        if (isReg && !form.terms) return setError("Please accept the terms to create your account.");
-        if (isReset && (!token || !urlEmail)) return setError("This reset link is incomplete. Open the link from your email again.");
 
         setBusy(true);
         try {
-            const email = form.email.trim();
-
-            if (isForgot) {
-                await storeApi(FORGOT_PATH, { method: "POST", body: { email } });
-                setNotice({ state: "ok", title: "Check your email", text: "If an account exists for that address, we've sent a link to reset your password." });
-                setBusy(false);
-                return;
-            }
-
-            if (isReset) {
-                await storeApi(RESET_PATH, { method: "POST", body: { email: urlEmail, token, newPassword: form.password } });
-                setNotice({ state: "ok", title: "Password updated", text: "You can now sign in with your new password." });
-                setBusy(false);
-                return;
-            }
-
+            // the backend sets httpOnly auth + CSRF cookies; storeApi sends them automatically
             if (isReg) {
-                const res = await storeApi(REGISTER_PATH, {
-                    method: "POST",
-                    body: { name: form.name.trim(), phone: form.phone.trim(), email, password: form.password },
-                });
-                const c = res?.customer || res?.user || {};
-                if (c.isEmailVerified || c.emailVerified || res?.verified) {
-                    notifyCartChanged();
-                    notifyAuthChanged(); // CHANGED
-                    setWelcome(c.name || form.name.trim());
-                    setTimeout(() => navigate(next, { replace: true }), 1200);
-                } else {
-                    setNotice({ state: "ok", title: "Verify your email", text: `We've sent a verification link to ${email}. Open it to activate your account, then sign in.` });
-                    setBusy(false);
-                }
-                return;
+                await storeApi(REGISTER_PATH, { method: "POST", body: { username, password: form.password } });
             }
 
-            // login: the backend sets httpOnly auth + CSRF cookies; storeApi sends them automatically
-            const res = await storeApi(LOGIN_PATH, { method: "POST", body: { email, password: form.password } });
+            const res = await storeApi(LOGIN_PATH, { method: "POST", body: { username, password: form.password } });
             notifyCartChanged();
-            notifyAuthChanged(); // CHANGED: navbar switches to "Hi, name / Logout"
+            notifyAuthChanged(); // navbar switches to "Hi, name / Logout"
+
             const c = res?.customer || res?.user || {};
-            setWelcome(c.name || "");
+            setWelcome(c.username || username);
             setTimeout(() => navigate(next, { replace: true }), 1200);
         } catch (err) {
             setError(err.message || "Something went wrong. Please try again.");
@@ -185,17 +125,13 @@ export default function CustomerAuth() {
         }
     };
 
-    const heading = {
-        login: ["Welcome back", "Sign in to continue your shopping."],
-        register: ["Join the studio", "Save your bag, track orders and try pieces in 3D."],
-        forgot: ["Reset your password", "Enter your email and we'll send you a reset link."],
-        reset: ["Choose a new password", "Pick something you haven't used before."],
-        verify: ["Email verification", "One moment while we confirm your address."],
-    }[mode];
+    const heading = isReg
+        ? ["Join the studio", "Save your bag, track orders and try pieces in 3D."]
+        : ["Welcome back", "Sign in to continue your shopping."];
 
     const cta = busy && !welcome
-        ? { login: "Signing in…", register: "Creating account…", forgot: "Sending link…", reset: "Updating…" }[mode]
-        : { login: "Sign in", register: "Create account", forgot: "Send reset link", reset: "Update password" }[mode];
+        ? (isReg ? "Creating account…" : "Signing in…")
+        : (isReg ? "Create account" : "Sign in");
 
     return (
         <div className="ca-page" onPointerMove={onMove} onPointerLeave={() => setTilt({ x: 0, y: 0 })}>
@@ -259,60 +195,40 @@ export default function CustomerAuth() {
                     <form className="ca-glass" onSubmit={submit}>
                         <span className="ca-sheen" />
 
-                        {hasTabs ? (
-                            <div className="ca-tabs" role="tablist">
-                                <span className="ca-ind" style={{ transform: `translateX(${isReg ? "100%" : "0"})` }} />
-                                <button type="button" role="tab" aria-selected={!isReg} className={!isReg ? "on" : ""} onClick={() => switchMode("login")}>Sign in</button>
-                                <button type="button" role="tab" aria-selected={isReg} className={isReg ? "on" : ""} onClick={() => switchMode("register")}>Create account</button>
-                            </div>
-                        ) : (
-                            <button type="button" className="ca-back" onClick={goToLogin}>← Back to sign in</button>
-                        )}
+                        <div className="ca-tabs" role="tablist">
+                            <span className="ca-ind" style={{ transform: `translateX(${isReg ? "100%" : "0"})` }} />
+                            <button type="button" role="tab" aria-selected={!isReg} className={!isReg ? "on" : ""} onClick={() => switchMode("login")}>Sign in</button>
+                            <button type="button" role="tab" aria-selected={isReg} className={isReg ? "on" : ""} onClick={() => switchMode("register")}>Create account</button>
+                        </div>
 
                         <div key={mode} className="ca-head ca-in">
                             <h1>{heading[0]}</h1>
                             <p className="ca-sub">{heading[1]}</p>
                         </div>
 
+                        <label className="ca-field">
+                            <User size={18} />
+                            <input
+                                type="text" required autoComplete="username" placeholder="Username"
+                                minLength={isReg ? 3 : undefined} maxLength={30}
+                                autoCapitalize="none" spellCheck={false}
+                                value={form.username} onChange={set("username")}
+                            />
+                        </label>
+
+                        <label className="ca-field">
+                            <Lock size={18} />
+                            <input
+                                type={show ? "text" : "password"} required minLength={isReg ? 8 : undefined}
+                                autoComplete={isReg ? "new-password" : "current-password"} placeholder="Password"
+                                value={form.password} onChange={set("password")}
+                            />
+                            <button type="button" className="ca-eye" onClick={() => setShow(!show)} aria-label={show ? "Hide password" : "Show password"}>
+                                {show ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                        </label>
+
                         {isReg && (
-                            <div className="ca-in ca-two">
-                                <label className="ca-field">
-                                    <User size={18} />
-                                    <input required autoComplete="name" placeholder="Full name" value={form.name} onChange={set("name")} />
-                                </label>
-                                <label className="ca-field">
-                                    <Phone size={18} />
-                                    <input type="tel" autoComplete="tel" placeholder="Phone (optional)" value={form.phone} onChange={set("phone")} />
-                                </label>
-                            </div>
-                        )}
-
-                        {!isReset && !isVerify && (
-                            <label className="ca-field">
-                                <Mail size={18} />
-                                <input type="email" required autoComplete="username" placeholder="Email" value={form.email} onChange={set("email")} />
-                            </label>
-                        )}
-
-                        {!isForgot && !isVerify && (
-                            <label className="ca-field">
-                                <Lock size={18} />
-                                <input
-                                    type={show ? "text" : "password"} required minLength={pwExtras ? 8 : undefined}
-                                    autoComplete={pwExtras ? "new-password" : "current-password"} placeholder={isReset ? "New password" : "Password"}
-                                    value={form.password} onChange={set("password")}
-                                />
-                                <button type="button" className="ca-eye" onClick={() => setShow(!show)} aria-label={show ? "Hide password" : "Show password"}>
-                                    {show ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
-                            </label>
-                        )}
-
-                        {mode === "login" && (
-                            <button type="button" className="ca-forgot" onClick={() => switchMode("forgot")}>Forgot password?</button>
-                        )}
-
-                        {pwExtras && (
                             <div className="ca-in ca-reg">
                                 <div className="ca-meter" aria-live="polite">
                                     <div className="ca-bars">{[1, 2, 3, 4].map((n) => <i key={n} className={score >= n ? `on s${score}` : ""} />)}</div>
@@ -323,29 +239,23 @@ export default function CustomerAuth() {
                                     <input type={show ? "text" : "password"} required autoComplete="new-password" placeholder="Confirm password" value={form.confirm} onChange={set("confirm")} />
                                     {form.confirm && form.confirm === form.password && <Check size={18} className="ca-ok" />}
                                 </label>
-                                {isReg && (
-                                    <label className="ca-terms">
-                                        <input type="checkbox" checked={form.terms} onChange={set("terms")} />
-                                        <span>I agree to the terms and privacy policy.</span>
-                                    </label>
-                                )}
+                                <label className="ca-terms">
+                                    <input type="checkbox" checked={form.terms} onChange={set("terms")} />
+                                    <span>I agree to the terms and privacy policy.</span>
+                                </label>
                             </div>
                         )}
 
                         {error && <p className="ca-error" role="alert">{error}</p>}
 
-                        {!isVerify && (
-                            <button className="ca-btn" disabled={busy}>
-                                <span>{cta}</span> <ArrowRight size={18} />
-                            </button>
-                        )}
+                        <button className="ca-btn" disabled={busy}>
+                            <span>{cta}</span> <ArrowRight size={18} />
+                        </button>
 
-                        {hasTabs && (
-                            <p className="ca-switch">
-                                {isReg ? "Already have an account?" : "New to Kani's Studio?"}{" "}
-                                <button type="button" onClick={() => switchMode(isReg ? "login" : "register")}>{isReg ? "Sign in" : "Create one"}</button>
-                            </p>
-                        )}
+                        <p className="ca-switch">
+                            {isReg ? "Already have an account?" : "New to Kani's Studio?"}{" "}
+                            <button type="button" onClick={() => switchMode(isReg ? "login" : "register")}>{isReg ? "Sign in" : "Create one"}</button>
+                        </p>
                     </form>
 
                     {welcome !== null && (
@@ -353,24 +263,6 @@ export default function CustomerAuth() {
                             <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" /><path d="M14 27l8 8 16-17" /></svg>
                             <p>{welcome ? `Welcome, ${welcome}` : "Welcome"}</p>
                             <small>Taking you back to the collection…</small>
-                        </div>
-                    )}
-
-                    {notice && (
-                        <div className="ca-welcome" role="status">
-                            {notice.state === "loading" ? null : (
-                                <svg viewBox="0 0 52 52" className={notice.state === "fail" ? "fail" : ""}>
-                                    <circle cx="26" cy="26" r="24" />
-                                    <path d={notice.state === "fail" ? "M18 18l16 16M34 18L18 34" : "M14 27l8 8 16-17"} />
-                                </svg>
-                            )}
-                            <p>{notice.title}</p>
-                            {notice.text && <small className="ca-notice-text">{notice.text}</small>}
-                            {notice.state !== "loading" && (
-                                <button type="button" className="ca-btn ca-notice-btn" onClick={goToLogin}>
-                                    <span>Go to sign in</span> <ArrowRight size={18} />
-                                </button>
-                            )}
                         </div>
                     )}
                 </section>
