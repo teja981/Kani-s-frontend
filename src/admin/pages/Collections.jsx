@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { rupees } from "../common.jsx";
-import "./collections.css";
+import "./Collections.css";
 
 const empty = { name: "", description: "", displayOrder: 0 };
 const FILTERS = ["all", "active", "inactive"];

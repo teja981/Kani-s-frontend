@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { rupees } from "../common.jsx";
-import "./products.css";
+import "./Products.css";
 
 const blank = {
     name: "", sku: "", collection: "", price: "", compareAtPrice: "", shortDescription: "",

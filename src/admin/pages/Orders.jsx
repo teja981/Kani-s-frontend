@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { rupees } from "../common.jsx";
-import "./orders.css";
+import "./Orders.css";
 
 const NEXT = {
     pending: ["confirmed", "cancelled"],

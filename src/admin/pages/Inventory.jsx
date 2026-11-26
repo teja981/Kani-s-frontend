@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { LOW_STOCK } from "../common.jsx";
-import "./inventory.css";
+import "./Inventory.css";
 
 const SPARKS = [
     { l: "6%", t: "8%", d: 0 }, { l: "94%", t: "14%", d: 1.2 },
